@@ -1,12 +1,10 @@
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { chromium } from 'playwright';
 import OpenAI from 'openai';
 import readline from 'readline';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
-puppeteer.use(StealthPlugin());
 
 const openai = new OpenAI({apiKey: process.env.API_KEY});
 const timeout = 8000;
@@ -64,7 +62,7 @@ async function highlight_links( page ) {
     });
 
     const elements = await page.$$(
-        "a, button, input, textarea, [role=button], [role=treeitem]"
+        "a, button, input, textarea, select, option, [role=button], [role=treeitem]"
     );
 
     elements.forEach( async e => {
@@ -117,6 +115,11 @@ async function highlight_links( page ) {
                 const link_text = e.textContent.replace(/[^a-zA-Z0-9 ]/g, '');
                 e.setAttribute( "gpt-link-text", link_text.toLowerCase() );
             }
+            else if(e.tagName.toLowerCase() === 'option')
+            {
+                const link_text = e.textContent.replace(/[^a-zA-Z0-9 ]/g, '');
+                e.setAttribute( "gpt-link-text", link_text.toLowerCase() );
+            }
         }, e);
     } );
 }
@@ -136,17 +139,16 @@ async function waitForEvent(page, event) {
     console.log( "# GPT4V-Browsing by Unconventional Coding #" );
     console.log( "###########################################\n" );
 
-    const browser = await puppeteer.launch( {
-        // headless: "new",
-        headless:false
-    } );
+    const browser = await chromium.launch({
+        headless: false
+    });
 
     const page = await browser.newPage();
 
-    await page.setViewport( {
-        width: 1200,
+    await page.setViewportSize( {
+        width: 1000,
         height: 1200,
-        deviceScaleFactor: 1.75,
+        deviceScaleFactor: 1,
     } );
 
     const messages = [
@@ -200,6 +202,7 @@ if applicable. Prefer to use Google for simple queries. If the user provides a d
             await page.screenshot( {
                 path: "screenshot.jpg",
                 quality: 100,
+                fullPage: true,
             } );
 
             screenshot_taken = true;
